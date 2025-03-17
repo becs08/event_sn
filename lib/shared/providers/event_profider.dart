@@ -1,4 +1,3 @@
-// lib/shared/providers/event_provider.dart
 import 'package:flutter/foundation.dart';
 
 import '../../data/models/event.dart';
