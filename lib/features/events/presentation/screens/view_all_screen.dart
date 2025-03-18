@@ -32,7 +32,7 @@ class _ViewAllScreenState extends State<ViewAllScreen> {
       location: 'Arène National du Sénégal',
       imageUrl: 'assets/images/lutte1.jpg',
       price: 5000,
-      rating: 4,
+      rating: 4, category: '', organizerId: '',
     ),
     Event(
       id: '2',
@@ -42,7 +42,7 @@ class _ViewAllScreenState extends State<ViewAllScreen> {
       location: 'Grand Théâtre de Dakar',
       imageUrl: 'assets/images/concert1.jpg',
       price: 10000,
-      rating: 3,
+      rating: 3, category: '', organizerId: '',
     ),
     Event(
       id: '3',
@@ -52,7 +52,7 @@ class _ViewAllScreenState extends State<ViewAllScreen> {
       location: 'Stade Léopold Sédar Senghor',
       imageUrl: 'assets/images/football1.jpg',
       price: 3000,
-      rating: 5,
+      rating: 5, category: '', organizerId: '',
     ),
   ];
 
