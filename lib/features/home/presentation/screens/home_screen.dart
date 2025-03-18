@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_strings.dart';
 import '../../../../shared/widgets/event_card.dart';
 import '../../../../shared/widgets/bottom_nav_bar.dart';
 import '../../../../data/models/event.dart';
@@ -31,8 +30,8 @@ class _HomeScreenState extends State<HomeScreen> {
       description: 'Combat ABC contre XYZ à l\'Arène National',
       date: DateTime(2025, 3, 14, 16, 0),
       location: 'Arène National du Sénégal',
-      imageUrl: 'assets/images/lutte1.jpg',
-      price: 5000,
+      imageUrl: 'assets/images/preview.png',
+      price: 5000, category: '', organizerId: '',
     ),
     Event(
       id: '2',
@@ -41,7 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
       date: DateTime(2025, 3, 20, 20, 0),
       location: 'Grand Théâtre de Dakar',
       imageUrl: 'assets/images/concert1.jpg',
-      price: 10000,
+      price: 10000, category: '', organizerId: '',
     ),
     Event(
       id: '3',
@@ -50,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
       date: DateTime(2025, 3, 14, 16, 0),
       location: 'Arène National du Sénégal',
       imageUrl: 'assets/images/lutte1.jpg',
-      price: 5000,
+      price: 5000, category: '', organizerId: '',
     ),
     Event(
       id: '4',
@@ -59,7 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
       date: DateTime(2025, 3, 20, 20, 0),
       location: 'Grand Théâtre de Dakar',
       imageUrl: 'assets/images/concert1.jpg',
-      price: 10000,
+      price: 10000, category: '', organizerId: '',
     ),
   ];
 
@@ -135,7 +134,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
