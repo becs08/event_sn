@@ -16,14 +16,37 @@ class User {
   });
 
   // Méthode pour créer un objet User à partir de données Firebase
-  factory User.fromFirestore(Map<String, dynamic> data, String id) {
+  static User fromFirestore(Map<String, dynamic> data, String id) {
+    // Gestion sécurisée des listes
+    List<String> parseFavorites(dynamic rawFavorites) {
+      if (rawFavorites == null) return [];
+      if (rawFavorites is List) {
+        return rawFavorites
+            .where((item) => item != null)
+            .map((item) => item.toString())
+            .toList();
+      }
+      return [];
+    }
+
+    List<String> parseTickets(dynamic rawTickets) {
+      if (rawTickets == null) return [];
+      if (rawTickets is List) {
+        return rawTickets
+            .where((item) => item != null)
+            .map((item) => item.toString())
+            .toList();
+      }
+      return [];
+    }
+
     return User(
       id: id,
       email: data['email'] ?? '',
       displayName: data['displayName'] ?? '',
       photoUrl: data['photoUrl'],
-      favoriteEvents: List<String>.from(data['favoriteEvents'] ?? []),
-      purchasedTickets: List<String>.from(data['purchasedTickets'] ?? []),
+      favoriteEvents: parseFavorites(data['favoriteEvents']),
+      purchasedTickets: parseTickets(data['purchasedTickets']),
     );
   }
 
@@ -35,6 +58,7 @@ class User {
       'photoUrl': photoUrl,
       'favoriteEvents': favoriteEvents,
       'purchasedTickets': purchasedTickets,
+      'updatedAt': DateTime.now().toIso8601String(), // Ajout d'un timestamp
     };
   }
 

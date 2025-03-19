@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_colors.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../data/services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -36,28 +36,32 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final user = await _authService.signIn(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+      final userCredential = await _authService.signInWithEmailAndPassword(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
       );
 
-      if (user != null) {
-        if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/');
-        }
-      } else {
+      if (mounted && userCredential != null) {
+        Navigator.of(context).pushReplacementNamed('/');
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
         setState(() {
-          _errorMessage = 'Échec de la connexion. Vérifiez vos identifiants.';
+          _errorMessage = e.message ?? 'Une erreur s\'est produite';
         });
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Une erreur est survenue: $e';
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Une erreur inattendue s\'est produite';
+        });
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -79,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primaryColor,
+                      color: Colors.deepPurple,
                     ),
                     textAlign: TextAlign.center,
                   ),

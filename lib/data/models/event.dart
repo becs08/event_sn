@@ -24,16 +24,16 @@ class Event {
     required this.imageUrl,
     required this.price,
     required this.category,
+    required this.organizerId,
     this.isFeatured = false,
     this.rating = 0,
-    required this.organizerId,
     this.organizerName = '',
     this.organizerAvatar = '',
     this.availableTickets = 0,
     this.soldTickets = 0,
   });
 
-  // Méthode pour convertir l'objet en Map pour Firebase
+  // Méthode pour convertir l'objet en Map pour Firebase avec gestion des valeurs null
   Map<String, dynamic> toFirestore() {
     return {
       'title': title,
@@ -50,87 +50,77 @@ class Event {
       'organizerAvatar': organizerAvatar,
       'availableTickets': availableTickets,
       'soldTickets': soldTickets,
-      'createdAt': DateTime.now().toIso8601String(),
+      'updatedAt': DateTime.now().toIso8601String(),
     };
   }
 
-  // Méthode pour créer un objet Event à partir de données Firebase
-  static Event fromFirestore(Map<String, dynamic> data, String id) {
-    return Event(
-      id: id,
-      title: data['title'] ?? '',
-      description: data['description'] ?? '',
-      date: DateTime.parse(data['date']),
-      location: data['location'] ?? '',
-      imageUrl: data['imageUrl'] ?? '',
-      price: (data['price'] ?? 0).toDouble(),
-      category: data['category'] ?? '',
-      isFeatured: data['isFeatured'] ?? false,
-      rating: data['rating'] ?? 0,
-      organizerId: data['organizerId'] ?? '',
-      organizerName: data['organizerName'] ?? '',
-      organizerAvatar: data['organizerAvatar'] ?? '',
-      availableTickets: data['availableTickets'] ?? 0,
-      soldTickets: data['soldTickets'] ?? 0,
-    );
-  }
+  // Méthode pour créer un objet Event à partir de données Firebase avec gestion robuste des valeurs nullables
+  static Event fromFirestore(Map<String, dynamic> data, String docId) {
+    // Traitement sécurisé de la date
+    DateTime parsedDate;
+    try {
+      final dateStr = data['date'] as String?;
+      if (dateStr != null) {
+        parsedDate = DateTime.parse(dateStr);
+      } else {
+        parsedDate = DateTime.now();
+      }
+    } catch (e) {
+      parsedDate = DateTime.now(); // Date par défaut en cas d'erreur
+    }
 
-  // Compatibilité avec les anciennes méthodes
-  Map<String, dynamic> toJson() => toFirestore();
+    // Traitement sécurisé des valeurs numériques
+    double getDouble(dynamic value) {
+      if (value == null) return 0.0;
+      if (value is double) return value;
+      if (value is int) return value.toDouble();
+      try {
+        return double.parse(value.toString());
+      } catch (_) {
+        return 0.0;
+      }
+    }
 
-  static Event fromJson(Map<String, dynamic> json) {
-    return Event(
-      id: json['id'] ?? '',
-      title: json['title'] ?? '',
-      description: json['description'] ?? '',
-      date: DateTime.parse(json['date']),
-      location: json['location'] ?? '',
-      imageUrl: json['imageUrl'] ?? '',
-      price: (json['price'] ?? 0).toDouble(),
-      category: json['category'] ?? '',
-      isFeatured: json['isFeatured'] ?? false,
-      rating: json['rating'] ?? 0,
-      organizerId: json['organizerId'] ?? '',
-      organizerName: json['organizerName'] ?? '',
-      organizerAvatar: json['organizerAvatar'] ?? '',
-      availableTickets: json['availableTickets'] ?? 0,
-      soldTickets: json['soldTickets'] ?? 0,
-    );
-  }
+    int getInt(dynamic value) {
+      if (value == null) return 0;
+      if (value is int) return value;
+      if (value is double) return value.toInt();
+      try {
+        return int.parse(value.toString());
+      } catch (_) {
+        return 0;
+      }
+    }
 
-  Event copyWith({
-    String? id,
-    String? title,
-    String? description,
-    DateTime? date,
-    String? location,
-    String? imageUrl,
-    double? price,
-    bool? isFeatured,
-    int? rating,
-    String? category,
-    String? organizerId,
-    String? organizerName,
-    String? organizerAvatar,
-    int? availableTickets,
-    int? soldTickets,
-  }) {
+    bool getBool(dynamic value) {
+      if (value == null) return false;
+      if (value is bool) return value;
+      if (value is String) return value.toLowerCase() == 'true';
+      if (value is num) return value != 0;
+      return false;
+    }
+
+    String getString(dynamic value) {
+      if (value == null) return '';
+      return value.toString();
+    }
+
     return Event(
-      id: id ?? this.id,
-      title: title ?? this.title,
-      description: description ?? this.description,
-      date: date ?? this.date,
-      location: location ?? this.location,
-      imageUrl: imageUrl ?? this.imageUrl,
-      price: price ?? this.price,
-      isFeatured: isFeatured ?? this.isFeatured,
-      rating: rating ?? this.rating,
-      category: category ?? this.category,
-      organizerId: organizerId ?? this.organizerId,
-      organizerName: organizerName ?? this.organizerName,
-      organizerAvatar: organizerAvatar ?? this.organizerAvatar,
-      availableTickets: availableTickets ?? this.availableTickets,
-      soldTickets: soldTickets ?? this.soldTickets,
+      id: docId,
+      title: getString(data['title']),
+      description: getString(data['description']),
+      date: parsedDate,
+      location: getString(data['location']),
+      imageUrl: getString(data['imageUrl']),
+      price: getDouble(data['price']),
+      category: getString(data['category']),
+      isFeatured: getBool(data['isFeatured']),
+      rating: getInt(data['rating']),
+      organizerId: getString(data['organizerId']),
+      organizerName: getString(data['organizerName']),
+      organizerAvatar: getString(data['organizerAvatar']),
+      availableTickets: getInt(data['availableTickets']),
+      soldTickets: getInt(data['soldTickets']),
     );
   }
 }

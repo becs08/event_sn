@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../firebase_options.dart';
 
 class FirebaseService {
-  static Future<void> initialize() async {
+  static Future<void> initialize({required options}) async {
     try {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,

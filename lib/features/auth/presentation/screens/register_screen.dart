@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_colors.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../data/services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -40,29 +40,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      final user = await _authService.signUp(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-        displayName: _nameController.text.trim(),
+      final userCredential = await _authService.registerWithEmailAndPassword(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+        _nameController.text.trim(),
       );
 
-      if (user != null) {
-        if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/');
-        }
-      } else {
+      if (mounted && userCredential != null) {
+        Navigator.of(context).pushReplacementNamed('/');
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
         setState(() {
-          _errorMessage = 'Échec de l\'inscription. Veuillez réessayer.';
+          _errorMessage = e.message ?? 'Une erreur s\'est produite';
         });
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Une erreur est survenue: $e';
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Une erreur inattendue s\'est produite';
+        });
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -87,7 +91,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primaryColor,
+                      color: Colors.deepPurple,
                     ),
                     textAlign: TextAlign.center,
                   ),

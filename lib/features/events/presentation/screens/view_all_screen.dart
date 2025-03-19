@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../../../shared/widgets/bottom_nav_bar.dart';
-import '../../../../core/constants/app_strings.dart';
-import '../../../../shared/widgets/event_card.dart';
 import '../../../../data/models/event.dart';
+import '../../../../data/services/event_service.dart';
+import '../../../../shared/widgets/loading_indicator.dart';
+import '../../../../shared/utils/date_formatter.dart';
+import '../../../../shared/widgets/bottom_nav_bar.dart';
 
 class ViewAllScreen extends StatefulWidget {
   const ViewAllScreen({super.key});
@@ -12,200 +13,216 @@ class ViewAllScreen extends StatefulWidget {
 }
 
 class _ViewAllScreenState extends State<ViewAllScreen> {
-  int _selectedCategoryIndex = 0;
+  final EventService _eventService = EventService();
+  bool _isLoading = true;
+  List<Event> _events = [];
+  String? _errorMessage;
+  String _title = 'Tous les événements';
+  String? _selectedCategory;
 
-  final List<String> _categories = [
-    'Lutte',
-    'Concerts',
-    'Football',
-    'Basket',
-    'Culture'
-  ];
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _selectedCategory = ModalRoute.of(context)?.settings.arguments as String?;
+    _loadEvents();
+  }
 
-  // Données statiques pour les événements
-  final List<Event> _events = [
-    Event(
-      id: '1',
-      title: 'Lutte: Combat ABC vs XYZ',
-      description: 'Combat ABC contre XYZ à l\'Arène National',
-      date: DateTime(2025, 3, 14, 16, 0),
-      location: 'Arène National du Sénégal',
-      imageUrl: 'assets/images/lutte1.jpg',
-      price: 5000,
-      rating: 4, category: '', organizerId: '',
-    ),
-    Event(
-      id: '2',
-      title: 'Concert: Youssou Ndour',
-      description: 'Concert live de Youssou Ndour',
-      date: DateTime(2025, 3, 20, 20, 0),
-      location: 'Grand Théâtre de Dakar',
-      imageUrl: 'assets/images/concert1.jpg',
-      price: 10000,
-      rating: 3, category: '', organizerId: '',
-    ),
-    Event(
-      id: '3',
-      title: 'Football: Sénégal vs Cameroun',
-      description: 'Match de qualification pour la CAN',
-      date: DateTime(2025, 4, 5, 18, 0),
-      location: 'Stade Léopold Sédar Senghor',
-      imageUrl: 'assets/images/football1.jpg',
-      price: 3000,
-      rating: 5, category: '', organizerId: '',
-    ),
-  ];
+  Future<void> _loadEvents() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      List<Event> events;
+
+      if (_selectedCategory != null) {
+        events = await _eventService.getEventsByCategory(_selectedCategory!);
+        _title = _selectedCategory!;
+      } else {
+        events = await _eventService.getAllEvents();
+      }
+
+      if (mounted) {
+        setState(() {
+          _events = events;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Erreur lors du chargement des événements: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // App Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'EventSn',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'View All',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.search),
-                        onPressed: () {},
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.more_vert),
-                        onPressed: () {},
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // Categories
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: Row(
-                children: List.generate(
-                  _categories.length,
-                      (index) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    child: ChoiceChip(
-                      label: Text(_categories[index]),
-                      selected: _selectedCategoryIndex == index,
-                      selectedColor: Colors.deepPurple,
-                      labelStyle: TextStyle(
-                        color: _selectedCategoryIndex == index
-                            ? Colors.white
-                            : Colors.black,
-                      ),
-                      onSelected: (selected) {
-                        if (selected) {
-                          setState(() {
-                            _selectedCategoryIndex = index;
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            // Event List
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16.0),
-                itemCount: _events.length,
-                itemBuilder: (context, index) {
-                  final event = _events[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0),
-                    child: _buildEventListItem(
-                      title: 'Event ${_categories[0]} ${index + 1}',
-                      rating: event.rating,
-                      imageUrl: event.imageUrl,
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
+      appBar: AppBar(
+        title: Text(_title),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {},
+          ),
+        ],
       ),
+      body: _isLoading
+          ? const LoadingIndicator(message: 'Chargement des événements...')
+          : _errorMessage != null
+          ? _buildErrorView()
+          : _events.isEmpty
+          ? _buildEmptyView()
+          : _buildEventList(),
       bottomNavigationBar: const BottomNavBar(currentIndex: 0),
     );
   }
 
-  Widget _buildEventListItem({
-    required String title,
-    required int rating,
-    required String imageUrl,
-  }) {
-    return InkWell(
-      onTap: () {
-        Navigator.pushNamed(context, '/event_detail');
-      },
-      child: Container(
-        height: 160,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+  Widget _buildErrorView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 48, color: Colors.red),
+          const SizedBox(height: 16),
+          Text(
+            _errorMessage ?? 'Une erreur est survenue',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 16),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: _loadEvents,
+            child: const Text('Réessayer'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.event_busy, size: 48, color: Colors.grey),
+          const SizedBox(height: 16),
+          Text(
+            _selectedCategory != null
+                ? 'Aucun événement trouvé dans la catégorie $_selectedCategory'
+                : 'Aucun événement disponible',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
-          ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Revenez plus tard pour voir de nouveaux événements',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEventList() {
+    return RefreshIndicator(
+      onRefresh: _loadEvents,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _events.length,
+        itemBuilder: (context, index) {
+          final event = _events[index];
+          return _buildEventCard(event);
+        },
+      ),
+    );
+  }
+
+  Widget _buildEventCard(Event event) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.pushNamed(
+          context,
+          '/event_detail',
+          arguments: event.id,
+        );
+      },
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 16),
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           children: [
+            // Image
             ClipRRect(
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 bottomLeft: Radius.circular(12),
               ),
-              child: Container(
-                width: 160,
-                height: 160,
-                color: Colors.grey[300],
-                child: const Icon(Icons.image, size: 40, color: Colors.grey),
+              child: SizedBox(
+                width: 120,
+                height: 120,
+                child: event.imageUrl.isNotEmpty
+                    ? Image.network(
+                  event.imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.image, color: Colors.grey),
+                    );
+                  },
+                )
+                    : Container(
+                  color: Colors.grey[300],
+                  child: const Icon(Icons.image, color: Colors.grey),
+                ),
               ),
             ),
+
+            // Contenu
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(12.0),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    // Badge à la une
+                    if (event.isFeatured)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        margin: const EdgeInsets.only(bottom: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          'À la une',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.orange,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+
+                    // Titre
                     Text(
-                      title,
+                      event.title,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -213,18 +230,70 @@ class _ViewAllScreenState extends State<ViewAllScreen> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    const SizedBox(height: 4),
+
+                    // Date
                     Row(
-                      children: List.generate(5, (index) {
-                        return Icon(
-                          index < rating ? Icons.star : Icons.star_border,
-                          color: Colors.purple,
-                          size: 20,
-                        );
-                      }),
+                      children: [
+                        const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          DateFormatter.formatEventDate(event.date),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
                     ),
-                    const Icon(
-                      Icons.arrow_forward,
-                      color: Colors.grey,
+                    const SizedBox(height: 4),
+
+                    // Lieu
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on, size: 14, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            event.location,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Prix et rating
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${event.price.toInt()} FCFA',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.deepPurple,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            const Icon(Icons.star, size: 16, color: Colors.amber),
+                            const SizedBox(width: 2),
+                            Text(
+                              '${event.rating}/5',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -234,13 +303,5 @@ class _ViewAllScreenState extends State<ViewAllScreen> {
         ),
       ),
     );
-  }
-
-  String _getMonthName(int month) {
-    const months = [
-      '', 'Jan', 'Fév', 'Mars', 'Avr', 'Mai', 'Juin',
-      'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'
-    ];
-    return months[month];
   }
 }
