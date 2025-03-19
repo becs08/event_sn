@@ -5,6 +5,7 @@ import '../../../../data/models/event.dart';
 import '../../../../data/services/event_service.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../widgets/featured_event_card.dart';
+import '../../../../shared/widgets/loading_indicator.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,11 +21,12 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _errorMessage;
 
   // Données pour les événements
+  List<Event> _allEvents = [];
+  List<Event> _filteredEvents = [];
   List<Event> _featuredEvents = [];
-  List<Event> _luttes = [];
-  List<Event> _concerts = [];
-  List<Event> _footballs = [];
-  List<Event> _culturels = [];
+
+  // Catégories prédéfinies
+  final List<String> categories = ['Populaire', 'Lutte', 'Concert', 'Football', 'Basket', 'Culture'];
 
   @override
   void initState() {
@@ -39,23 +41,21 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
+      // Charger tous les événements
+      final allEvents = await _eventService.getAllEvents();
+
       // Charger les événements à la une
       final featuredEvents = await _eventService.getFeaturedEvents();
-
-      // Charger les événements par catégorie
-      final luttes = await _eventService.getEventsByCategory('Lutte');
-      final concerts = await _eventService.getEventsByCategory('Concert');
-      final footballs = await _eventService.getEventsByCategory('Football');
-      final culturels = await _eventService.getEventsByCategory('Culture');
 
       // Mettre à jour l'état
       if (mounted) {
         setState(() {
+          _allEvents = allEvents;
           _featuredEvents = featuredEvents;
-          _luttes = luttes;
-          _concerts = concerts;
-          _footballs = footballs;
-          _culturels = culturels;
+
+          // Filtrer par la catégorie actuellement sélectionnée
+          _filterEventsBySelectedCategory();
+
           _isLoading = false;
         });
       }
@@ -66,6 +66,26 @@ class _HomeScreenState extends State<HomeScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  // Méthode pour filtrer les événements en fonction de la catégorie sélectionnée
+  void _filterEventsBySelectedCategory() {
+    if (_selectedCategoryIndex == 0) {
+      // "Populaire" - afficher tous les événements, mais triés par rating
+      _filteredEvents = List.from(_allEvents);
+      _filteredEvents.sort((a, b) => b.rating.compareTo(a.rating));
+
+      // Limiter à 10 événements pour éviter un affichage trop long
+      if (_filteredEvents.length > 10) {
+        _filteredEvents = _filteredEvents.sublist(0, 10);
+      }
+    } else {
+      // Autres catégories - filtrer par le nom de la catégorie
+      final selectedCategory = categories[_selectedCategoryIndex];
+      _filteredEvents = _allEvents
+          .where((event) => event.category == selectedCategory)
+          .toList();
     }
   }
 
@@ -94,14 +114,16 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       body: SafeArea(
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? const LoadingIndicator(message: 'Chargement des événements...')
             : _errorMessage != null
             ? _buildErrorView()
-            : _buildEventList(),
+            : _buildContent(),
       ),
       bottomNavigationBar: const BottomNavBar(currentIndex: 0),
       floatingActionButton: FloatingActionButton(
         onPressed: _addSampleEvents,
+        backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
         child: const Icon(Icons.add),
         tooltip: 'Ajouter des événements de démonstration',
       ),
@@ -130,7 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildEventList() {
+  Widget _buildContent() {
     return Column(
       children: [
         _buildAppBar(),
@@ -138,63 +160,126 @@ class _HomeScreenState extends State<HomeScreen> {
         Expanded(
           child: RefreshIndicator(
             onRefresh: _loadEvents,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Événement à la une
-                  if (_featuredEvents.isNotEmpty) ...[
-                    _buildSectionHeader("À L'AFFICHE", null),
-                    const SizedBox(height: 16),
-                    FeaturedEventCard(event: _featuredEvents.first),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // Section Lutte
-                  if (_luttes.isNotEmpty) ...[
-                    _buildSectionHeader('LUTTE', () {
-                      Navigator.pushNamed(context, '/view_all', arguments: 'Lutte');
-                    }),
-                    const SizedBox(height: 8),
-                    _buildHorizontalEventList(_luttes),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // Section Concert
-                  if (_concerts.isNotEmpty) ...[
-                    _buildSectionHeader('CONCERT', () {
-                      Navigator.pushNamed(context, '/view_all', arguments: 'Concert');
-                    }),
-                    const SizedBox(height: 8),
-                    _buildHorizontalEventList(_concerts),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // Section Football
-                  if (_footballs.isNotEmpty) ...[
-                    _buildSectionHeader('FOOTBALL', () {
-                      Navigator.pushNamed(context, '/view_all', arguments: 'Football');
-                    }),
-                    const SizedBox(height: 8),
-                    _buildHorizontalEventList(_footballs),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // Section Culture
-                  if (_culturels.isNotEmpty) ...[
-                    _buildSectionHeader('CULTURE', () {
-                      Navigator.pushNamed(context, '/view_all', arguments: 'Culture');
-                    }),
-                    const SizedBox(height: 8),
-                    _buildHorizontalEventList(_culturels),
-                  ],
-                ],
-              ),
-            ),
+            child: _selectedCategoryIndex == 0
+                ? _buildHomeContent()
+                : _buildCategoryContent(),
           ),
         ),
       ],
+    );
+  }
+
+  // Contenu pour l'écran d'accueil (catégorie "Populaire")
+  Widget _buildHomeContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Événement à la une (si disponible)
+          if (_featuredEvents.isNotEmpty) ...[
+            _buildSectionHeader("À L'AFFICHE", null),
+            const SizedBox(height: 16),
+            FeaturedEventCard(event: _featuredEvents.first),
+            const SizedBox(height: 24),
+          ],
+
+          // Recommandations / Populaires
+          _buildSectionHeader('RECOMMANDÉS POUR VOUS', () {
+            Navigator.pushNamed(context, '/view_all');
+          }),
+          const SizedBox(height: 8),
+          _buildHorizontalEventList(_filteredEvents),
+          const SizedBox(height: 24),
+
+          // Sections par catégorie
+          ...categories.skip(1).map((category) {
+            final categoryEvents = _allEvents
+                .where((event) => event.category == category)
+                .toList();
+
+            if (categoryEvents.isEmpty) {
+              return const SizedBox.shrink();
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSectionHeader(category.toUpperCase(), () {
+                  Navigator.pushNamed(context, '/view_all', arguments: category);
+                }),
+                const SizedBox(height: 8),
+                _buildHorizontalEventList(categoryEvents),
+                const SizedBox(height: 24),
+              ],
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  // Contenu pour une catégorie spécifique
+  Widget _buildCategoryContent() {
+    if (_filteredEvents.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.event_busy, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(
+              'Aucun événement trouvé dans la catégorie "${categories[_selectedCategoryIndex]}"',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Titre de la catégorie
+          Text(
+            categories[_selectedCategoryIndex].toUpperCase(),
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Grid de tous les événements de cette catégorie
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 0.6,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+            ),
+            itemCount: _filteredEvents.length,
+            itemBuilder: (context, index) {
+              return EventCard(
+                event: _filteredEvents[index],
+                isCompact: true, // Utilisation du mode compact pour la grille
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    '/event_detail',
+                    arguments: _filteredEvents[index].id,
+                  );
+                },
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -209,6 +294,7 @@ class _HomeScreenState extends State<HomeScreen> {
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
+              color: Colors.deepPurple,
             ),
           ),
           Row(
@@ -229,30 +315,33 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCategorySelector() {
-    final categories = ['Populaire', 'Lutte', 'Concert', 'Football', 'Basket', 'Culture'];
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-      child: Row(
-        children: List.generate(
-          categories.length,
-              (index) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: ChoiceChip(
-              label: Text(categories[index]),
-              selected: _selectedCategoryIndex == index,
-              selectedColor: Colors.deepPurple,
-              labelStyle: TextStyle(
-                color: _selectedCategoryIndex == index ? Colors.white : Colors.black,
+    return Container(
+      height: 50,
+      margin: const EdgeInsets.only(top: 8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+        child: Row(
+          children: List.generate(
+            categories.length,
+                (index) => Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: ChoiceChip(
+                label: Text(categories[index]),
+                selected: _selectedCategoryIndex == index,
+                selectedColor: Colors.deepPurple,
+                labelStyle: TextStyle(
+                  color: _selectedCategoryIndex == index ? Colors.white : Colors.black,
+                ),
+                onSelected: (selected) {
+                  if (selected) {
+                    setState(() {
+                      _selectedCategoryIndex = index;
+                      _filterEventsBySelectedCategory(); // Filtrer les événements après changement de catégorie
+                    });
+                  }
+                },
               ),
-              onSelected: (selected) {
-                if (selected) {
-                  setState(() {
-                    _selectedCategoryIndex = index;
-                  });
-                }
-              },
             ),
           ),
         ),
@@ -283,7 +372,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHorizontalEventList(List<Event> events) {
     return SizedBox(
       height: 290,
-      child: ListView.builder(
+      child: events.isEmpty
+          ? const Center(
+        child: Text('Aucun événement disponible dans cette catégorie'),
+      )
+          : ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: events.length,
         itemBuilder: (context, index) {
