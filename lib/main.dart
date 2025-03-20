@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'features/home/presentation/screens/home_screen.dart';
-import 'core/theme/app_theme.dart';
 import 'features/events/presentation/screens/event_detail_screen.dart';
 import 'features/events/presentation/screens/view_all_screen.dart';
 import 'core/services/firebase_service.dart';
